@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ccl:document xmlns:ccl="urn:compliai:ccl:v1"
+              xmlns:qos="urn:compliai:ccl:ext:qos:v1">
+
+  <ccl:metadata>
+    <ccl:version>1.0</ccl:version>
+    <ccl:generated-at>2024-11-15T10:23:41Z</ccl:generated-at>
+    <ccl:generated-by agent="ccl_generator" model="gpt-4" />
+    <ccl:schema-version>urn:compliai:ccl:v1</ccl:schema-version>
+    <ccl:extensions>
+      <ccl:extension namespace="urn:compliai:ccl:ext:qos:v1" />
+    </ccl:extensions>
+  </ccl:metadata>
+
+  <ccl:target-systems>
+    <ccl:target-system id="ts:core-network-logs">
+      <ccl:type>LOG_SYSTEM</ccl:type>
+      <ccl:access-method>FILE_SYSTEM</ccl:access-method>
+      <ccl:location>/var/log/volte/rtt_metrics.csv</ccl:location>
+      <qos:network-layer>core</qos:network-layer>
+    </ccl:target-system>
+
+    <ccl:target-system id="ts:network-config">
+      <ccl:type>CONFIG_STORE</ccl:type>
+      <ccl:access-method>FILE_SYSTEM</ccl:access-method>
+      <ccl:location>/etc/telecom/qos_config.json</ccl:location>
+    </ccl:target-system>
+  </ccl:target-systems>
+
+  <ccl:regulation id="reg:trai-qos-2024">
+    <ccl:title>TRAI Quality of Service Regulations, 2024</ccl:title>
+    <ccl:authority>Telecom Regulatory Authority of India</ccl:authority>
+    <ccl:jurisdiction>India</ccl:jurisdiction>
+    <ccl:reg-version>2024.1</ccl:reg-version>
+    <ccl:effective-date>2024-07-01</ccl:effective-date>
+
+    <ccl:clause id="cl:4.2.1" section-ref="Chapter IV, §4.2.1">
+      <ccl:text>The service provider shall ensure that the average
+        round-trip latency for voice over LTE calls does not exceed
+        150 milliseconds as measured at the core network boundary,
+        with 95th percentile latency not exceeding 200 milliseconds,
+        measured over any rolling 24-hour window.</ccl:text>
+      <ccl:obligation>MANDATORY</ccl:obligation>
+
+      <ccl:risk>
+        <ccl:risk-type>OPERATIONAL</ccl:risk-type>
+        <ccl:severity>HIGH</ccl:severity>
+        <ccl:consequence>Degraded voice quality impacting millions
+          of VoLTE subscribers; potential regulatory penalty.</ccl:consequence>
+      </ccl:risk>
+
+      <ccl:intent id="int:4.2.1:001">
+        <ccl:description>Ensure voice over LTE call quality remains
+          within acceptable latency bounds to prevent perceptible
+          voice degradation for end users.</ccl:description>
+        <ccl:category>quality_of_service</ccl:category>
+        <ccl:lineage>
+          <ccl:origin type="regulation_clause" ref="cl:4.2.1" />
+          <ccl:derived-by agent="intent_agent" at="2024-11-15T10:23:41Z" />
+          <ccl:transformation type="llm_extraction" confidence="0.91" />
+        </ccl:lineage>
+
+        <ccl:objective id="obj:4.2.1:001" logic="AND">
+          <ccl:description>VoLTE RTT latency must satisfy both
+            average and 95th-percentile thresholds.</ccl:description>
+
+          <!-- Constraint 1: Average latency -->
+          <ccl:constraint id="con:4.2.1:001" type="METRIC">
+            <ccl:description>Average RTT ≤ 150ms over 24h window</ccl:description>
+
+            <ccl:measure name="rtt_latency_avg">
+              <ccl:unit>ms</ccl:unit>
+              <ccl:data-type>FLOAT</ccl:data-type>
+              <ccl:aggregation>MEAN</ccl:aggregation>
+              <qos:metric-class>latency</qos:metric-class>
+              <qos:service-type>volte</qos:service-type>
+            </ccl:measure>
+
+            <ccl:threshold>
+              <ccl:operator>LTE</ccl:operator>
+              <ccl:value>150</ccl:value>
+              <ccl:unit>ms</ccl:unit>
+              <ccl:tolerance>0</ccl:tolerance>
+              <ccl:window>PT24H</ccl:window>
+              <ccl:min-samples>100</ccl:min-samples>
+            </ccl:threshold>
+
+            <ccl:evidence-requirement id="evr:4.2.1:001"
+                                      evidence-type="METRIC"
+                                      freshness="PT24H">
+              <ccl:quality-criteria>Automated collection from core
+                network boundary; no manual sampling.</ccl:quality-criteria>
+
+              <ccl:probe-strategy id="ps:4.2.1:001" probe-type="LOG_SCAN">
+                <ccl:method>Parse CSV RTT logs, filter VoLTE calls,
+                  compute mean over 24h window.</ccl:method>
+                <ccl:output-format>{"avg_rtt_ms": float}</ccl:output-format>
+                <ccl:target-system-ref ref="ts:core-network-logs" />
+              </ccl:probe-strategy>
+            </ccl:evidence-requirement>
+
+            <ccl:validation-condition type="DETERMINISTIC">
+              <ccl:predicate>
+                measure(rtt_latency_avg) &lt;= threshold(150, ms)
+              </ccl:predicate>
+              <ccl:confidence-profile base="0.99"
+                                      depends-on="evidence_quality sample_size" />
+            </ccl:validation-condition>
+          </ccl:constraint>
+
+          <!-- Constraint 2: P95 latency -->
+          <ccl:constraint id="con:4.2.1:002" type="METRIC">
+            <ccl:description>P95 RTT ≤ 200ms over 24h window</ccl:description>
+
+            <ccl:measure name="rtt_latency_p95">
+              <ccl:unit>ms</ccl:unit>
+              <ccl:data-type>FLOAT</ccl:data-type>
+              <ccl:aggregation>P95</ccl:aggregation>
+              <qos:metric-class>latency</qos:metric-class>
+              <qos:service-type>volte</qos:service-type>
+            </ccl:measure>
+
+            <ccl:threshold>
+              <ccl:operator>LTE</ccl:operator>
+              <ccl:value>200</ccl:value>
+              <ccl:unit>ms</ccl:unit>
+              <ccl:window>PT24H</ccl:window>
+              <ccl:min-samples>100</ccl:min-samples>
+            </ccl:threshold>
+
+            <ccl:evidence-requirement id="evr:4.2.1:002"
+                                      evidence-type="METRIC"
+                                      freshness="PT24H">
+              <ccl:probe-strategy id="ps:4.2.1:002" probe-type="LOG_SCAN">
+                <ccl:method>Parse CSV RTT logs, filter VoLTE calls,
+                  compute 95th percentile over 24h window.</ccl:method>
+                <ccl:output-format>{"p95_rtt_ms": float}</ccl:output-format>
+                <ccl:target-system-ref ref="ts:core-network-logs" />
+              </ccl:probe-strategy>
+            </ccl:evidence-requirement>
+
+            <ccl:validation-condition type="DETERMINISTIC">
+              <ccl:predicate>
+                measure(rtt_latency_p95) &lt;= threshold(200, ms)
+              </ccl:predicate>
+              <ccl:confidence-profile base="0.99"
+                                      depends-on="evidence_quality sample_size" />
+            </ccl:validation-condition>
+          </ccl:constraint>
+
+        </ccl:objective>
+      </ccl:intent>
+    </ccl:clause>
+
+  </ccl:regulation>
+</ccl:document>

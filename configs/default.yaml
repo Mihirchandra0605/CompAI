@@ -1,0 +1,42 @@
+# CompliAI Default Configuration
+app:
+  name: CompliAI
+  version: 0.1.0
+  env: development
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  prefix: /api/v1
+
+llm:
+  provider: openai
+  model: gpt-4
+  temperature: 0.0
+  max_tokens: 4096
+  timeout_seconds: 60
+
+orchestration:
+  max_retries: 3
+  retry_delay_seconds: 2.0
+  hitl_enabled: false
+  checkpoint_enabled: true
+
+probes:
+  max_concurrent: 10
+  default_timeout_seconds: 30
+  retry_on_transient: true
+  max_retries: 3
+
+persistence:
+  backend: sqlite
+  sqlite_path: ./data/compliai.db
+
+observability:
+  structured_logging: true
+  log_level: INFO
+  langsmith_enabled: false
+
+validation:
+  min_confidence_threshold: 0.80
+  insufficient_evidence_threshold: 0.50

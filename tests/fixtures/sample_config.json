@@ -1,0 +1,19 @@
+{
+  "network": {
+    "provider": "TelecomCo India",
+    "region": "delhi-ncr",
+    "core_boundary": {
+      "measurement_point": "core-gw-01",
+      "interface": "S1-U",
+      "protocol": "GTP-U"
+    },
+    "qos_config": {
+      "volte_priority": "expedited_forwarding",
+      "dscp_marking": "ef",
+      "latency_sla_ms": 150,
+      "p95_sla_ms": 200,
+      "measurement_window_hours": 24,
+      "min_samples_required": 100
+    }
+  }
+}

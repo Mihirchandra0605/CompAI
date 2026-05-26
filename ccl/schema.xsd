@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:ccl="urn:compliai:ccl:v1"
+           targetNamespace="urn:compliai:ccl:v1"
+           elementFormDefault="qualified">
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- ROOT ELEMENT                                    -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <xs:element name="document" type="ccl:CCLDocumentType"/>
+
+  <xs:complexType name="CCLDocumentType">
+    <xs:sequence>
+      <xs:element name="metadata" type="ccl:MetadataType"/>
+      <xs:element name="target-systems" type="ccl:TargetSystemsType" minOccurs="0"/>
+      <xs:element name="regulation" type="ccl:RegulationType"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- METADATA                                        -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <xs:complexType name="MetadataType">
+    <xs:sequence>
+      <xs:element name="version" type="xs:string"/>
+      <xs:element name="generated-at" type="xs:dateTime" minOccurs="0"/>
+      <xs:element name="generated-by" minOccurs="0">
+        <xs:complexType>
+          <xs:attribute name="agent" type="xs:string"/>
+          <xs:attribute name="model" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="schema-version" type="xs:anyURI"/>
+      <xs:element name="extensions" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="extension" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:attribute name="namespace" type="xs:anyURI" use="required"/>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- TARGET SYSTEMS                                  -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <xs:complexType name="TargetSystemsType">
+    <xs:sequence>
+      <xs:element name="target-system" type="ccl:TargetSystemType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TargetSystemType">
+    <xs:sequence>
+      <xs:element name="type" type="ccl:TargetSystemTypeEnum"/>
+      <xs:element name="access-method" type="ccl:AccessMethodEnum"/>
+      <xs:element name="location" type="xs:string"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <xs:simpleType name="TargetSystemTypeEnum">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="NETWORK_ELEMENT"/>
+      <xs:enumeration value="CONFIG_STORE"/>
+      <xs:enumeration value="LOG_SYSTEM"/>
+      <xs:enumeration value="DOC_REPO"/>
+      <xs:enumeration value="API"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="AccessMethodEnum">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="FILE_SYSTEM"/>
+      <xs:enumeration value="API"/>
+      <xs:enumeration value="DATABASE"/>
+      <xs:enumeration value="MANUAL"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- REGULATION                                      -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <xs:complexType name="RegulationType">
+    <xs:sequence>
+      <xs:element name="title" type="xs:string"/>
+      <xs:element name="authority" type="xs:string"/>
+      <xs:element name="jurisdiction" type="xs:string"/>
+      <xs:element name="reg-version" type="xs:string" minOccurs="0"/>
+      <xs:element name="effective-date" type="xs:date" minOccurs="0"/>
+      <xs:element name="clause" type="ccl:ClauseType" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- CLAUSE                                          -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <xs:complexType name="ClauseType">
+    <xs:sequence>
+      <xs:element name="text" type="xs:string"/>
+      <xs:element name="obligation" type="ccl:ObligationEnum"/>
+      <xs:element name="risk" type="ccl:RiskType" minOccurs="0"/>
+      <xs:element name="intent" type="ccl:IntentType" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="section-ref" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <xs:simpleType name="ObligationEnum">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="MANDATORY"/>
+      <xs:enumeration value="RECOMMENDED"/>
+      <xs:enumeration value="PERMISSIVE"/>
+      <xs:enumeration value="PROHIBITIVE"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- RISK                                            -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <xs:complexType name="RiskType">
+    <xs:sequence>
+      <xs:element name="risk-type" type="ccl:RiskTypeEnum"/>
+      <xs:element name="severity" type="ccl:SeverityEnum"/>
+      <xs:element name="consequence" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="RiskTypeEnum">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="OPERATIONAL"/>
+      <xs:enumeration value="FINANCIAL"/>
+      <xs:enumeration value="LEGAL"/>
+      <xs:enumeration value="REPUTATIONAL"/>
+      <xs:enumeration value="SAFETY"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SeverityEnum">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="LOW"/>
+      <xs:enumeration value="MEDIUM"/>
+      <xs:enumeration value="HIGH"/>
+      <xs:enumeration value="CRITICAL"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- INTENT                                          -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <xs:complexType name="IntentType">
+    <xs:sequence>
+      <xs:element name="description" type="xs:string"/>
+      <xs:element name="category" type="xs:string" minOccurs="0"/>
+      <xs:element name="lineage" type="ccl:LineageType" minOccurs="0"/>
+      <xs:element name="objective" type="ccl:ObjectiveType" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- OBJECTIVE                                       -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <xs:complexType name="ObjectiveType">
+    <xs:sequence>
+      <xs:element name="description" type="xs:string" minOccurs="0"/>
+      <xs:element name="constraint" type="ccl:ConstraintType" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="logic" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="AND"/>
+          <xs:enumeration value="OR"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:complexType>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- CONSTRAINT                                      -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <xs:complexType name="ConstraintType">
+    <xs:sequence>
+      <xs:element name="description" type="xs:string" minOccurs="0"/>
+      <xs:element name="measure" type="ccl:MeasureType"/>
+      <xs:element name="threshold" type="ccl:ThresholdType"/>
+      <xs:element name="evidence-requirement" type="ccl:EvidenceRequirementType"/>
+      <xs:element name="validation-condition" type="ccl:ValidationConditionType"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="type" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="METRIC"/>
+          <xs:enumeration value="TEMPORAL"/>
+          <xs:enumeration value="SPATIAL"/>
+          <xs:enumeration value="PROCEDURAL"/>
+          <xs:enumeration value="CONFIGURATION"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:complexType>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- MEASURE                                         -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <xs:complexType name="MeasureType">
+    <xs:sequence>
+      <xs:element name="unit" type="xs:string"/>
+      <xs:element name="data-type" type="xs:string" minOccurs="0"/>
+      <xs:element name="aggregation" type="ccl:AggregationEnum"/>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <xs:simpleType name="AggregationEnum">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="MEAN"/>
+      <xs:enumeration value="MEDIAN"/>
+      <xs:enumeration value="P95"/>
+      <xs:enumeration value="P99"/>
+      <xs:enumeration value="MAX"/>
+      <xs:enumeration value="MIN"/>
+      <xs:enumeration value="SUM"/>
+      <xs:enumeration value="COUNT"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- THRESHOLD                                       -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <xs:complexType name="ThresholdType">
+    <xs:sequence>
+      <xs:element name="operator" type="ccl:OperatorEnum"/>
+      <xs:element name="value" type="xs:decimal"/>
+      <xs:element name="unit" type="xs:string"/>
+      <xs:element name="tolerance" type="xs:decimal" minOccurs="0"/>
+      <xs:element name="window" type="xs:duration" minOccurs="0"/>
+      <xs:element name="min-samples" type="xs:positiveInteger" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="OperatorEnum">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="LTE"/>
+      <xs:enumeration value="GTE"/>
+      <xs:enumeration value="EQ"/>
+      <xs:enumeration value="NEQ"/>
+      <xs:enumeration value="IN_RANGE"/>
+      <xs:enumeration value="NOT_NULL"/>
+      <xs:enumeration value="CONTAINS"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- EVIDENCE REQUIREMENT                            -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <xs:complexType name="EvidenceRequirementType">
+    <xs:sequence>
+      <xs:element name="quality-criteria" type="xs:string" minOccurs="0"/>
+      <xs:element name="probe-strategy" type="ccl:ProbeStrategyType" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="evidence-type" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="METRIC"/>
+          <xs:enumeration value="CONFIG"/>
+          <xs:enumeration value="LOG"/>
+          <xs:enumeration value="DOCUMENT"/>
+          <xs:enumeration value="API_RESPONSE"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="freshness" type="xs:duration"/>
+  </xs:complexType>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- PROBE STRATEGY                                  -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <xs:complexType name="ProbeStrategyType">
+    <xs:sequence>
+      <xs:element name="method" type="xs:string"/>
+      <xs:element name="output-format" type="xs:string" minOccurs="0"/>
+      <xs:element name="target-system-ref">
+        <xs:complexType>
+          <xs:attribute name="ref" type="xs:string" use="required"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="probe-type" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="LOG_SCAN"/>
+          <xs:enumeration value="CONFIG_SCAN"/>
+          <xs:enumeration value="DOC_SCAN"/>
+          <xs:enumeration value="API_QUERY"/>
+          <xs:enumeration value="MANUAL"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:complexType>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- VALIDATION CONDITION                            -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <xs:complexType name="ValidationConditionType">
+    <xs:sequence>
+      <xs:element name="predicate" type="xs:string"/>
+      <xs:element name="confidence-profile" minOccurs="0">
+        <xs:complexType>
+          <xs:attribute name="base" type="xs:decimal"/>
+          <xs:attribute name="depends-on" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="type" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="DETERMINISTIC"/>
+          <xs:enumeration value="SEMANTIC"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:complexType>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- LINEAGE                                         -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <xs:complexType name="LineageType">
+    <xs:sequence>
+      <xs:element name="origin">
+        <xs:complexType>
+          <xs:attribute name="type" type="xs:string" use="required"/>
+          <xs:attribute name="ref" type="xs:string" use="required"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="derived-by">
+        <xs:complexType>
+          <xs:attribute name="agent" type="xs:string" use="required"/>
+          <xs:attribute name="at" type="xs:dateTime" use="required"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="transformation" minOccurs="0">
+        <xs:complexType>
+          <xs:attribute name="type" type="xs:string" use="required"/>
+          <xs:attribute name="confidence" type="xs:decimal"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>

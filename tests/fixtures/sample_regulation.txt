@@ -1,0 +1,5 @@
+TRAI Quality of Service Regulations, 2024
+Chapter IV — Network Quality Standards
+Section 4.2.1 — VoLTE Latency Requirements
+
+The service provider shall ensure that the average round-trip latency for voice over LTE calls does not exceed 150 milliseconds as measured at the core network boundary, with 95th percentile latency not exceeding 200 milliseconds, measured over any rolling 24-hour window.
