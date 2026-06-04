@@ -21,8 +21,8 @@ class CCLGeneratorAgent(BaseComplianceAgent[CCLInput, CCLOutput]):
 
     name = "ccl_generator"
 
-    def __init__(self, llm: AbstractLLMProvider):
-        self._llm = llm
+    def __init__(self, slm_service):
+        super().__init__(slm_service=slm_service)
 
     async def execute(self, input: CCLInput, trace: TraceCollector) -> CCLOutput:
         """Generate CCL XML from intents using LLM."""
@@ -42,14 +42,16 @@ class CCLGeneratorAgent(BaseComplianceAgent[CCLInput, CCLOutput]):
         ) as span:
             span.set_input(f"{len(input.intents)} intents")
 
-            response = await self._llm.generate(
+            response = await self._slm_service.query(
                 prompt=prompt,
                 system_prompt=CCL_SYSTEM_PROMPT,
                 temperature=0.0,
                 max_tokens=8192,
+                use_rag=True,
+                rag_query=input.regulation_title or input.regulation_text[:200]
             )
 
-            ccl_xml = self._extract_xml(response.content)
+            ccl_xml = self._extract_xml(response)
             span.set_output(f"Generated CCL XML ({len(ccl_xml)} chars)")
 
         # Validate structure

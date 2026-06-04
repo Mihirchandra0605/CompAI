@@ -53,6 +53,7 @@ class ComplianceState(BaseModel):
     ccl_document: str | None = None
     compliance_graph: dict[str, Any] | None = None
     probe_definitions: list[dict[str, Any]] | None = None
+    validation_conditions: list[dict[str, Any]] | None = None
     evidence_collection: list[dict[str, Any]] | None = None
     validation_results: list[dict[str, Any]] | None = None
     xai_analysis: dict[str, Any] | None = None

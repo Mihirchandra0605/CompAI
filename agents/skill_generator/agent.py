@@ -96,6 +96,7 @@ class SkillGeneratorAgent(BaseComplianceAgent[SkillGeneratorInput, SkillGenerato
             validation_conditions=validation_conditions,
             state_updates={
                 "probe_definitions": [pd.model_dump() for pd in probe_defs],
+                "validation_conditions": validation_conditions,
             },
         )
 
@@ -115,15 +116,21 @@ class SkillGeneratorAgent(BaseComplianceAgent[SkillGeneratorInput, SkillGenerato
         }
 
         if constraint.measure:
+            metric_column = self._infer_metric_column(constraint.measure.name)
             config["aggregation"] = {
                 "method": constraint.measure.aggregation.lower(),
-                "column": constraint.measure.name,
+                "column": metric_column,
             }
+            if ps.probe_type.upper() == "LOG_SCAN":
+                config["columns"] = ["timestamp", "call_id", "call_type", metric_column]
 
         if constraint.threshold:
             config["filter"] = {}
             if constraint.threshold.window:
                 config["window"] = constraint.threshold.window
+
+        if ps.probe_type.upper() == "LOG_SCAN" and "volte" in ps.method.lower():
+            config.setdefault("filter", {})["call_type"] = "volte"
 
         return ProbeDefinition(
             probe_id=f"probe:{run_id[:8]}:{uuid.uuid4().hex[:8]}",
@@ -131,6 +138,13 @@ class SkillGeneratorAgent(BaseComplianceAgent[SkillGeneratorInput, SkillGenerato
             probe_type=ps.probe_type,
             config=config,
         )
+
+    def _infer_metric_column(self, measure_name: str) -> str:
+        """Map CCL measure names to likely evidence columns used by probes."""
+        normalized = measure_name.lower()
+        if "rtt" in normalized or "latency" in normalized:
+            return "rtt_ms"
+        return measure_name
 
     def _derive_validation_condition(self, constraint) -> dict[str, Any]:
         """Derive a ValidationCondition from a CCL Constraint."""

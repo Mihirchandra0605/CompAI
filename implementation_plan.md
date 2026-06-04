@@ -20,6 +20,22 @@ graph LR
 
 The V1 prototype targets **TRAI QoS latency compliance** with simulated telecom data.
 
+### Shared SLM + ChromaDB Knowledge Layer
+
+The current implementation adds a centralized SLM/RAG layer so agent reasoning is not isolated per agent. Regulations, standards, audit documents, and supporting telecom references can be parsed and ingested into ChromaDB through `scripts/ingest_regulations.py`. Agents query this shared layer through `infrastructure/slm_service.py`, which wraps the configured LLM provider plus `ChromaVectorStore`.
+
+The intended runtime shape is:
+
+```text
+Regulatory / standards documents
+  -> DocumentParser
+  -> ChromaVectorStore
+  -> SLMService
+  -> 7-agent compliance pipeline
+```
+
+The system should be described as **SLM/RAG-augmented and LLM-guided**, while deterministic engines remain responsible for CCL parsing, probe execution, threshold validation, confidence math, and evidence handling. This keeps regulatory interpretation flexible without allowing nondeterministic model output to directly decide compliance verdicts.
+
 ---
 
 ## Proposed Repository Structure
@@ -399,10 +415,13 @@ Each agent includes a `prompts.py` with system/user prompt templates.
 > Cross-cutting concerns: vector store, LLM provider, event bus, logging, tracing.
 
 #### [NEW] infrastructure/vector_store.py
-- `AbstractVectorStore` + `QdrantVectorStore` skeleton
+- `AbstractVectorStore` + `ChromaVectorStore` implementation
 
 #### [NEW] infrastructure/llm_provider.py
-- `AbstractLLMProvider` + `LangChainLLMProvider`
+- `AbstractLLMProvider` + `OpenAILLMProvider` (handles OpenAI, Groq, Ollama)
+
+#### [NEW] infrastructure/slm_service.py
+- `SLMService`: A centralized RAG service that wraps both the `LLMProvider` and `ChromaVectorStore`. Exposes a unified `query()` method that automatically retrieves context from the vector store and queries the LLM. All agents will use this service.
 
 #### [NEW] infrastructure/event_bus.py
 - In-process async event bus
@@ -507,12 +526,15 @@ Each agent includes a `prompts.py` with system/user prompt templates.
 
 ---
 
-## Open Questions
+## Final Decisions on Architecture
 
-> [!NOTE]
-> These are non-blocking for V1 scaffold generation. Defaults are noted.
+Based on your feedback and the provided `CompliAI (1).docx` architectural document, here are the decisions for the previously open questions:
 
-1. **LLM Provider**: Default to OpenAI-compatible via LangChain. Should we add Gemini/Anthropic provider stubs?
-2. **Database**: V1 uses in-memory repositories. Should we add SQLAlchemy/PostgreSQL stubs?
-3. **Frontend Framework**: Plan uses Next.js 14 with App Router. Confirm this is acceptable vs. plain React/Vite.
-4. **Authentication**: No auth in V1 scaffold. Should we add auth middleware stubs?
+1. **LLM Provider**: We will proceed with the `OpenAILLMProvider` as a unified interface. It defaults to the best available provider based on your environment variables (OpenAI, Groq, or a local Ollama server). This gives maximum flexibility without needing code changes later.
+2. **Centralized SLM RAG Usage**: The document specifies 7 agents. Based on their roles:
+   - **Intent (Agent 1), CCL (Agent 2), XAI Analyzer (Agent 6), Document Builder (Agent 7)** heavily require the SLM. We will wire them to use the centralized `SLMService` with RAG.
+   - **Skill Generator (Agent 4)** will also use the SLM to map complex CCL strategies to specific network probes.
+   - **Mind Mapper (Agent 3) & Probe (Agent 5)** are primarily deterministic (parsing XML and executing code). We will provide them access to the SLM in case semantic code analysis is needed, but their core logic will remain deterministic for reliability.
+3. **Database**: *Elaboration:* Right now, the system holds all data (like the generated XML, compliance reports, and probe results) in memory. When the script finishes, the data is lost. By adding a database (we'll use `SQLite` since it requires no extra servers), we can permanently save the results of every compliance run. This means your future dashboard will be able to show a history of all past audits.
+4. **Frontend Framework**: Skipped for now. We will focus purely on the backend, API, and the Agent Pipeline.
+5. **Authentication**: We will implement JWT (JSON Web Token) based authentication for the FastAPI backend. Any user or external system trying to trigger the pipeline via API will need to provide a valid token.

@@ -38,30 +38,40 @@ async def run_pipeline(request: PipelineRunRequest):
     from orchestration.pipeline import CompliancePipeline
     from agents.intent.agent import IntentAgent
     from agents.ccl_generator.agent import CCLGeneratorAgent
+    from agents.mind_mapper.agent import MindMapperAgent
+    from agents.skill_generator.agent import SkillGeneratorAgent
     from agents.probe.agent import ProbeAgent
     from agents.xai_analyzer.agent import XAIAnalyzerAgent
     from agents.document_builder.agent import DocumentBuilderAgent
     from infrastructure.llm_provider import MockLLMProvider
+    from infrastructure.slm_service import SLMService
+    from infrastructure.vector_store import ChromaVectorStore
     from probes.dispatcher import ProbeDispatcher
     from probes.registry import ProbeRegistry
     from probes.executors.log_scan import LogScanProbe
+    from probes.executors.config_scan import ConfigScanProbe
     from probes.validation.engine import ValidationEngine
     from events.bus import AsyncEventBus
 
     # Setup infrastructure
     llm = MockLLMProvider()
+    vector_store = ChromaVectorStore()
+    slm_service = SLMService(llm_provider=llm, vector_store=vector_store)
     probe_registry = ProbeRegistry()
     probe_registry.register("LOG_SCAN", LogScanProbe)
+    probe_registry.register("CONFIG_SCAN", ConfigScanProbe)
     dispatcher = ProbeDispatcher(probe_registry)
     event_bus = AsyncEventBus()
 
     # Build pipeline
     pipeline = CompliancePipeline(
-        intent_agent=IntentAgent(llm),
-        ccl_agent=CCLGeneratorAgent(llm),
+        intent_agent=IntentAgent(slm_service=slm_service),
+        ccl_agent=CCLGeneratorAgent(slm_service=slm_service),
+        mind_mapper_agent=MindMapperAgent(slm_service=slm_service),
+        skill_generator_agent=SkillGeneratorAgent(slm_service=slm_service),
         probe_agent=ProbeAgent(dispatcher),
-        xai_agent=XAIAnalyzerAgent(),
-        doc_agent=DocumentBuilderAgent(),
+        xai_agent=XAIAnalyzerAgent(slm_service=slm_service),
+        doc_agent=DocumentBuilderAgent(slm_service=slm_service),
         validation_engine=ValidationEngine(),
         event_bus=event_bus,
     )

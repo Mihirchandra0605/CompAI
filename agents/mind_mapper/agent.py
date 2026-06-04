@@ -36,7 +36,12 @@ class MindMapperAgent(BaseComplianceAgent[MindMapperInput, MindMapperOutput]):
 
     name = "mind_mapper"
 
-    def __init__(self, graph_backend: NetworkXGraphBackend | None = None):
+    def __init__(
+        self,
+        graph_backend: NetworkXGraphBackend | None = None,
+        slm_service=None,
+    ):
+        super().__init__(slm_service=slm_service)
         self._graph = graph_backend or NetworkXGraphBackend()
 
     async def execute(

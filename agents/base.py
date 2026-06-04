@@ -26,6 +26,10 @@ class BaseComplianceAgent(ABC, Generic[TInput, TOutput]):
     name: str = "base_agent"
     retry_policy: RetryPolicy = RetryPolicy()
 
+    def __init__(self, slm_service=None):
+        self._slm_service = slm_service
+
+
     async def run(self, input: TInput, trace: TraceCollector) -> TOutput | FailureContract:
         """
         Entry point. Validates input, executes, validates output.

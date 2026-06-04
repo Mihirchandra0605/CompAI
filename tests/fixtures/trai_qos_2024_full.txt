@@ -1,0 +1,35 @@
+Title: Standards of Quality of Service of Access (Wireline and Wireless) and Broadband (Wireline and Wireless) Service Regulations, 2024
+Issued By: Telecom Regulatory Authority of India (TRAI)
+Effective Date: October 1, 2024
+
+Chapter I — Preliminary
+1.1 Short title, extent, and commencement
+These regulations may be called the Standards of Quality of Service of Access (Wireline and Wireless) and Broadband (Wireline and Wireless) Service Regulations, 2024. They come into force on October 1, 2024.
+
+Chapter II — Objectives and Applicability
+2.1 Objective
+The primary objective of these regulations is to modernize the quality-of-service framework, shifting from older, fragmented standards to a comprehensive, unified set of rules. They account for the widespread adoption of modern technologies such as 4G, 5G, and high-speed fiber broadband.
+
+2.2 Applicability
+They apply to all service providers holding Unified Access Service Licenses, Unified Licenses with authorization for access services, and Internet Service Authorizations (with certain exceptions for small ISPs with fewer than 10,000 subscribers).
+
+Chapter IV — Network Quality Standards
+Section 4.2.1 — VoLTE Latency Requirements
+The service provider shall ensure that the average round-trip latency for voice over LTE calls does not exceed 150 milliseconds as measured at the core network boundary, with 95th percentile latency not exceeding 200 milliseconds, measured over any rolling 24-hour window.
+
+Section 4.2.2 — 5G Wireless Broadband Latency
+For 5G services, the wireless broadband latency must be maintained below 75 milliseconds. Operators must plan to reduce this threshold to below 50 milliseconds by the year 2026.
+
+Section 4.3 — Coverage Maps
+Operators are required to display technology-wise (2G/3G/4G/5G) coverage maps on their official websites, updated quarterly to reflect accurate service availability.
+
+Chapter V — Financial Disincentives
+Section 5.1 — Penalties for Non-Compliance
+Financial disincentives apply if a service provider fails to meet the prescribed quality benchmarks:
+- First contravention: Up to ₹1 lakh per benchmark violation.
+- Second consecutive contravention: Up to ₹2 lakhs per benchmark violation.
+- Each subsequent consecutive contravention: Up to ₹3 lakhs per benchmark violation.
+
+Chapter VI — Monitoring and Reporting
+Section 6.1 — Audit Data
+TRAI continues to monitor compliance through mechanisms such as audit data submission and drive tests on selected routes. Service providers must retain logs for 180 days to allow for verification.

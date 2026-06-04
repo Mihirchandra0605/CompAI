@@ -1,75 +1,64 @@
-"""Vector store abstraction — Qdrant-ready interface."""
+"""Vector store abstraction using ChromaDB for RAG."""
 
-from __future__ import annotations
+import os
+from pathlib import Path
+from typing import List, Dict, Any
 
-from abc import ABC, abstractmethod
-from typing import Any
+try:
+    import chromadb
+except ImportError:
+    chromadb = None
 
-from pydantic import BaseModel, Field
+class ChromaVectorStore:
+    """A local vector store powered by ChromaDB."""
+    
+    def __init__(self, persist_dir: str = "./.chroma_db", collection_name: str = "regulations"):
+        self.persist_dir = persist_dir
+        self.collection_name = collection_name
+        
+        # Ensure directory exists
+        Path(self.persist_dir).mkdir(parents=True, exist_ok=True)
 
+        if chromadb is None:
+            raise ImportError("chromadb is required for ChromaVectorStore. Install chromadb first.")
+        
+        self.client = chromadb.PersistentClient(path=self.persist_dir)
+        try:
+            self.collection = self.client.get_collection(name=self.collection_name)
+        except Exception:
+            self.collection = self.client.create_collection(
+                name=self.collection_name,
+                metadata={"hnsw:space": "cosine"}
+            )
 
-class VectorDocument(BaseModel):
-    """A document stored in the vector store."""
+    def add_documents(self, documents: List[str], metadatas: List[Dict[str, Any]], ids: List[str]):
+        """Add documents to the vector store."""
+        if not documents:
+            return
+        self.collection.upsert(
+            documents=documents,
+            metadatas=metadatas,
+            ids=ids
+        )
 
-    doc_id: str
-    content: str
-    embedding: list[float] | None = None
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-
-class SearchResult(BaseModel):
-    """A search result from the vector store."""
-
-    doc_id: str
-    content: str
-    score: float
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-
-class AbstractVectorStore(ABC):
-    """Abstract vector store interface — Qdrant abstraction."""
-
-    @abstractmethod
-    async def upsert(self, documents: list[VectorDocument]) -> None:
-        ...
-
-    @abstractmethod
-    async def search(
-        self, query: str, top_k: int = 5, filter_metadata: dict | None = None
-    ) -> list[SearchResult]:
-        ...
-
-    @abstractmethod
-    async def delete(self, doc_ids: list[str]) -> None:
-        ...
-
-
-class InMemoryVectorStore(AbstractVectorStore):
-    """In-memory vector store for V1 development."""
-
-    def __init__(self) -> None:
-        self._store: dict[str, VectorDocument] = {}
-
-    async def upsert(self, documents: list[VectorDocument]) -> None:
-        for doc in documents:
-            self._store[doc.doc_id] = doc
-
-    async def search(
-        self, query: str, top_k: int = 5, filter_metadata: dict | None = None
-    ) -> list[SearchResult]:
-        # Simple keyword matching for V1
-        results = []
-        query_lower = query.lower()
-        for doc in self._store.values():
-            if query_lower in doc.content.lower():
-                results.append(SearchResult(
-                    doc_id=doc.doc_id,
-                    content=doc.content,
-                    score=1.0,
-                    metadata=doc.metadata,
-                ))
-        return results[:top_k]
-
-    async def delete(self, doc_ids: list[str]) -> None:
-        for doc_id in doc_ids:
-            self._store.pop(doc_id, None)
+    def search(self, query: str, n_results: int = 3) -> List[Dict[str, Any]]:
+        """Search the vector store for relevant documents."""
+        # if collection is empty, return empty
+        if self.collection.count() == 0:
+            return []
+            
+        results = self.collection.query(
+            query_texts=[query],
+            n_results=min(n_results, self.collection.count())
+        )
+        
+        formatted_results = []
+        if results['documents'] and len(results['documents']) > 0:
+            for i, doc in enumerate(results['documents'][0]):
+                meta = results['metadatas'][0][i] if results['metadatas'] else {}
+                formatted_results.append({
+                    "content": doc,
+                    "metadata": meta,
+                    "id": results['ids'][0][i]
+                })
+        return formatted_results

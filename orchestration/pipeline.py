@@ -16,7 +16,9 @@ from typing import Any
 from agents.ccl_generator.agent import CCLGeneratorAgent
 from agents.document_builder.agent import DocumentBuilderAgent, DocumentInput
 from agents.intent.agent import IntentAgent
+from agents.mind_mapper.agent import MindMapperAgent, MindMapperInput
 from agents.probe.agent import ProbeAgent
+from agents.skill_generator.agent import SkillGeneratorAgent, SkillGeneratorInput
 from agents.xai_analyzer.agent import XAIAnalyzerAgent, XAIInput
 from contracts.base import AgentMetadata, FailureContract
 from contracts.ccl_contract import CCLInput
@@ -71,6 +73,8 @@ class CompliancePipeline:
         self,
         intent_agent: IntentAgent,
         ccl_agent: CCLGeneratorAgent,
+        mind_mapper_agent: MindMapperAgent,
+        skill_generator_agent: SkillGeneratorAgent,
         probe_agent: ProbeAgent,
         xai_agent: XAIAnalyzerAgent,
         doc_agent: DocumentBuilderAgent,
@@ -79,6 +83,8 @@ class CompliancePipeline:
     ):
         self._intent_agent = intent_agent
         self._ccl_agent = ccl_agent
+        self._mind_mapper_agent = mind_mapper_agent
+        self._skill_generator_agent = skill_generator_agent
         self._probe_agent = probe_agent
         self._xai_agent = xai_agent
         self._doc_agent = doc_agent
@@ -124,22 +130,32 @@ class CompliancePipeline:
                 state, exec_ctx, trace, regulation_text
             )
 
-            # Stage 3: Probe Execution
+            # Stage 3: Build Knowledge Graph
+            state, exec_ctx = await self._run_mind_mapper_stage(
+                state, exec_ctx, trace
+            )
+
+            # Stage 4: Generate Probe Skills
+            state, exec_ctx = await self._run_skill_generation_stage(
+                state, exec_ctx, trace
+            )
+
+            # Stage 5: Probe Execution
             state, exec_ctx = await self._run_probe_stage(
                 state, exec_ctx, trace, probe_definitions
             )
 
-            # Stage 4: Validation
+            # Stage 6: Validation
             state, exec_ctx = await self._run_validation_stage(
                 state, exec_ctx, trace, validation_conditions
             )
 
-            # Stage 5: XAI Analysis
+            # Stage 7: XAI Analysis
             state, exec_ctx = await self._run_xai_stage(
                 state, exec_ctx, trace, regulation_text
             )
 
-            # Stage 6: Report Generation
+            # Stage 8: Report Generation
             state, exec_ctx = await self._run_report_stage(
                 state, exec_ctx, trace, regulation_text
             )
@@ -271,6 +287,92 @@ class CompliancePipeline:
             source="ccl_generator",
             run_id=state.run_id,
             payload={"clauses": result.clause_count, "constraints": result.constraint_count},
+        ))
+
+        return state, exec_ctx
+
+    async def _run_mind_mapper_stage(
+        self,
+        state: ComplianceState,
+        exec_ctx: ExecutionContext,
+        trace: TraceCollector,
+    ) -> tuple[ComplianceState, ExecutionContext]:
+        """Stage 3: Build compliance knowledge graph from CCL."""
+        logger.info("Stage 3: Mind Mapping")
+        start = datetime.now(timezone.utc)
+
+        metadata = AgentMetadata(
+            run_id=state.run_id,
+            agent_name="mind_mapper",
+            state_version=state.version.version,
+        )
+
+        mapper_input = MindMapperInput(
+            metadata=metadata,
+            compliance_state_version=state.version.version,
+            ccl_document=state.ccl_document or "",
+            regulation_id=state.regulation_id,
+        )
+
+        result = await self._mind_mapper_agent.run(mapper_input, trace)
+
+        if isinstance(result, FailureContract):
+            raise RuntimeError(f"Mind mapping failed: {result.error_message}")
+
+        state = state.evolve("mind_mapper", compliance_graph=result.graph_summary)
+
+        exec_ctx.agent_executions.append(AgentExecution(
+            agent_name="mind_mapper",
+            started_at=start,
+            completed_at=datetime.now(timezone.utc),
+            status=ExecutionStatus.COMPLETED,
+            input_state_version=state.version.parent_version or 1,
+            output_state_version=state.version.version,
+        ))
+
+        return state, exec_ctx
+
+    async def _run_skill_generation_stage(
+        self,
+        state: ComplianceState,
+        exec_ctx: ExecutionContext,
+        trace: TraceCollector,
+    ) -> tuple[ComplianceState, ExecutionContext]:
+        """Stage 4: Derive probes and validation conditions from CCL."""
+        logger.info("Stage 4: Skill Generation")
+        start = datetime.now(timezone.utc)
+
+        metadata = AgentMetadata(
+            run_id=state.run_id,
+            agent_name="skill_generator",
+            state_version=state.version.version,
+        )
+
+        skill_input = SkillGeneratorInput(
+            metadata=metadata,
+            compliance_state_version=state.version.version,
+            ccl_document=state.ccl_document or "",
+            regulation_id=state.regulation_id,
+        )
+
+        result = await self._skill_generator_agent.run(skill_input, trace)
+
+        if isinstance(result, FailureContract):
+            raise RuntimeError(f"Skill generation failed: {result.error_message}")
+
+        state = state.evolve(
+            "skill_generator",
+            probe_definitions=[pd.model_dump() for pd in result.probe_definitions],
+            validation_conditions=result.validation_conditions,
+        )
+
+        exec_ctx.agent_executions.append(AgentExecution(
+            agent_name="skill_generator",
+            started_at=start,
+            completed_at=datetime.now(timezone.utc),
+            status=ExecutionStatus.COMPLETED,
+            input_state_version=state.version.parent_version or 1,
+            output_state_version=state.version.version,
         ))
 
         return state, exec_ctx
@@ -521,13 +623,13 @@ class CompliancePipeline:
 
     def _derive_default_probes(self, state: ComplianceState) -> list[ProbeDefinition]:
         """Derive probe definitions from state when none provided."""
-        return []
+        return [ProbeDefinition(**pd) for pd in (state.probe_definitions or [])]
 
     def _derive_default_conditions(
         self, state: ComplianceState
     ) -> list[ValidationCondition]:
         """Derive validation conditions from state."""
-        return []
+        return [ValidationCondition(**vc) for vc in (state.validation_conditions or [])]
 
     def _find_matching_evidence(
         self, condition: ValidationCondition, evidence_collection: list[dict]

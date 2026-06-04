@@ -24,7 +24,9 @@ env/
 
 # Data
 data/*.db
+*.db
 *.sqlite
+.chroma_db/
 
 # OS
 .DS_Store
@@ -37,3 +39,5 @@ htmlcov/
 
 # Logs
 *.log
+
+data/*

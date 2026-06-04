@@ -21,7 +21,8 @@ class ProbeAgent(BaseComplianceAgent[ProbeInput, ProbeOutput]):
 
     name = "probe_agent"
 
-    def __init__(self, dispatcher: ProbeDispatcher):
+    def __init__(self, dispatcher: ProbeDispatcher, slm_service=None):
+        super().__init__(slm_service=slm_service)
         self._dispatcher = dispatcher
 
     async def execute(self, input: ProbeInput, trace: TraceCollector) -> ProbeOutput:

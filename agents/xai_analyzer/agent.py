@@ -83,12 +83,40 @@ class XAIAnalyzerAgent(BaseComplianceAgent[XAIInput, XAIOutput]):
             span.set_output(f"Verdict: {reg_verdict}, confidence: {overall_confidence:.2f}")
             span.set_confidence(overall_confidence, ["aggregated_validation_confidence"])
 
-        # Build reasoning chain
+        # Build reasoning chain and recommendations via SLM
         async with trace.span(
             "build_reasoning_chain", TraceNodeType.INFERENCE, agent_name=self.name
         ) as span:
-            reasoning_chain = self._build_reasoning_chain(results, input.intents)
-            recommendations = self._generate_recommendations(failing, insufficient)
+            
+            if self._slm_service:
+                schema = {
+                    "reasoning_chain": ["string"],
+                    "recommendations": ["string"]
+                }
+                prompt = (
+                    f"Given the following compliance validation results:\n{results}\n\n"
+                    f"And the original intents:\n{input.intents}\n\n"
+                    "Please generate a detailed, logical reasoning chain explaining the compliance verdict "
+                    "and a list of actionable recommendations for any failures or missing evidence."
+                )
+                try:
+                    slm_resp = await self._slm_service.query_structured(
+                        prompt=prompt,
+                        system_prompt="You are an expert compliance auditor for telecom systems. Provide clear and actionable explanations.",
+                        output_schema=schema,
+                        use_rag=True,
+                        rag_query="Compliance evaluation and recommendations"
+                    )
+                    reasoning_chain = slm_resp.get("reasoning_chain", [])
+                    recommendations = slm_resp.get("recommendations", [])
+                except Exception as e:
+                    logger.error(f"XAI SLM call failed: {e}")
+                    reasoning_chain = self._build_reasoning_chain(results, input.intents)
+                    recommendations = self._generate_recommendations(failing, insufficient)
+            else:
+                reasoning_chain = self._build_reasoning_chain(results, input.intents)
+                recommendations = self._generate_recommendations(failing, insufficient)
+                
             span.set_output(f"{len(reasoning_chain)} reasoning steps")
 
         # Build clause verdicts

@@ -43,7 +43,27 @@ class DocumentBuilderAgent(BaseComplianceAgent[DocumentInput, DocumentOutput]):
         async with trace.span(
             "generate_report", TraceNodeType.TOOL_USE, agent_name=self.name
         ) as span:
-            report = self._build_report(input)
+            if self._slm_service:
+                prompt = (
+                    f"Generate a professional, markdown-formatted compliance report for regulation {input.regulation_id}.\n\n"
+                    f"Regulation Text:\n{input.regulation_text[:2000]}\n\n"
+                    f"XAI Analysis:\n{input.xai_analysis}\n\n"
+                    f"Validation Results:\n{input.validation_results}\n\n"
+                    "Please structure it beautifully with clear sections: Overview, Constraint Results, Evidence Summary, Reasoning, and Recommendations. Use tables where appropriate."
+                )
+                try:
+                    report = await self._slm_service.query(
+                        prompt=prompt,
+                        system_prompt="You are an expert compliance report generator.",
+                        use_rag=True,
+                        rag_query=f"Compliance report template and standards for {input.regulation_id}"
+                    )
+                except Exception as e:
+                    logger.error(f"Document Builder SLM call failed: {e}")
+                    report = self._build_report(input)
+            else:
+                report = self._build_report(input)
+                
             span.set_output(f"Generated report ({len(report)} chars)")
             span.set_confidence(0.95, ["deterministic_formatting"])
 

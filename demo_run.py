@@ -23,10 +23,16 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Load .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 from agents.ccl_generator.agent import CCLGeneratorAgent
 from agents.document_builder.agent import DocumentBuilderAgent
 from agents.intent.agent import IntentAgent
+from agents.mind_mapper.agent import MindMapperAgent
 from agents.probe.agent import ProbeAgent
+from agents.skill_generator.agent import SkillGeneratorAgent
 from agents.xai_analyzer.agent import XAIAnalyzerAgent
 from infrastructure.llm_provider import AbstractLLMProvider, LLMResponse, MockLLMProvider
 from orchestration.pipeline import CompliancePipeline
@@ -34,132 +40,14 @@ from probes.dispatcher import ProbeDispatcher
 from probes.executors.log_scan import LogScanProbe
 from probes.registry import ProbeRegistry
 from probes.validation.engine import ValidationEngine
+from infrastructure.vector_store import ChromaVectorStore
+
 
 # Paths
 FIXTURES_DIR = Path(__file__).parent / "tests" / "fixtures"
-REGULATION_FILE = FIXTURES_DIR / "sample_regulation.txt"
+REGULATION_FILE = FIXTURES_DIR / "trai_qos_2024_full.txt"
 LATENCY_LOGS_FILE = FIXTURES_DIR / "sample_latency_logs.csv"
 
-
-class DemoLLMProvider(AbstractLLMProvider):
-    """LLM provider that returns pre-defined responses for the demo scenario."""
-
-    async def generate(
-        self,
-        prompt: str,
-        system_prompt=None,
-        temperature=0.0,
-        max_tokens=4096,
-        response_format=None,
-    ) -> LLMResponse:
-        """Return appropriate demo responses based on prompt content."""
-        if "compliance intent" in (system_prompt or "").lower() or "extract" in prompt.lower():
-            return LLMResponse(
-                content=json.dumps(self._intent_response()),
-                model="demo-gpt4",
-                usage={"prompt_tokens": 500, "completion_tokens": 300},
-            )
-        elif "ccl" in (system_prompt or "").lower() or "ccl" in prompt.lower():
-            return LLMResponse(
-                content=self._ccl_response(),
-                model="demo-gpt4",
-                usage={"prompt_tokens": 800, "completion_tokens": 1200},
-            )
-        else:
-            return LLMResponse(content="{}", model="demo-gpt4", usage={})
-
-    async def generate_structured(self, prompt, output_schema, system_prompt=None, temperature=0.0):
-        return self._intent_response()
-
-    def _intent_response(self) -> dict:
-        return {
-            "intents": [
-                {
-                    "intent_id": "int:4.2.1:001",
-                    "clause_reference": "Chapter IV, §4.2.1",
-                    "description": "Ensure VoLTE call quality by maintaining RTT latency within acceptable bounds",
-                    "severity": "critical",
-                    "category": "quality_of_service",
-                    "measurable_criteria": [
-                        "Average RTT latency ≤ 150ms over 24h window",
-                        "95th percentile RTT latency ≤ 200ms over 24h window",
-                    ],
-                    "target_systems": ["core_network_boundary"],
-                    "evidence_requirements": [
-                        "VoLTE RTT latency metrics from core network logs"
-                    ],
-                    "confidence": 0.91,
-                }
-            ],
-            "regulation_summary": "TRAI QoS 2024 §4.2.1 mandates VoLTE RTT latency thresholds at core network boundary",
-        }
-
-    def _ccl_response(self) -> str:
-        return """<?xml version="1.0" encoding="UTF-8"?>
-<ccl:document xmlns:ccl="urn:compliai:ccl:v1" xmlns:qos="urn:compliai:ccl:ext:qos:v1">
-  <ccl:metadata>
-    <ccl:version>1.0</ccl:version>
-    <ccl:generated-by agent="ccl_generator" model="gpt-4" />
-    <ccl:schema-version>urn:compliai:ccl:v1</ccl:schema-version>
-  </ccl:metadata>
-  <ccl:target-systems>
-    <ccl:target-system id="ts:core-network-logs">
-      <ccl:type>LOG_SYSTEM</ccl:type>
-      <ccl:access-method>FILE_SYSTEM</ccl:access-method>
-      <ccl:location>/var/log/volte/rtt_metrics.csv</ccl:location>
-    </ccl:target-system>
-  </ccl:target-systems>
-  <ccl:regulation id="reg:trai-qos-2024">
-    <ccl:title>TRAI Quality of Service Regulations, 2024</ccl:title>
-    <ccl:authority>TRAI</ccl:authority>
-    <ccl:jurisdiction>India</ccl:jurisdiction>
-    <ccl:clause id="cl:4.2.1" section-ref="Chapter IV, §4.2.1">
-      <ccl:text>The service provider shall ensure that the average RTT latency for VoLTE calls does not exceed 150ms with p95 not exceeding 200ms over 24h.</ccl:text>
-      <ccl:obligation>MANDATORY</ccl:obligation>
-      <ccl:risk>
-        <ccl:risk-type>OPERATIONAL</ccl:risk-type>
-        <ccl:severity>HIGH</ccl:severity>
-      </ccl:risk>
-      <ccl:intent id="int:4.2.1:001">
-        <ccl:description>Ensure VoLTE latency quality</ccl:description>
-        <ccl:objective id="obj:4.2.1:001" logic="AND">
-          <ccl:constraint id="con:4.2.1:001" type="METRIC">
-            <ccl:measure name="rtt_latency_avg">
-              <ccl:unit>ms</ccl:unit>
-              <ccl:aggregation>MEAN</ccl:aggregation>
-            </ccl:measure>
-            <ccl:threshold>
-              <ccl:operator>LTE</ccl:operator>
-              <ccl:value>150</ccl:value>
-              <ccl:unit>ms</ccl:unit>
-              <ccl:window>PT24H</ccl:window>
-              <ccl:min-samples>100</ccl:min-samples>
-            </ccl:threshold>
-            <ccl:validation-condition type="DETERMINISTIC">
-              <ccl:predicate>measure(rtt_latency_avg) &lt;= threshold(150, ms)</ccl:predicate>
-            </ccl:validation-condition>
-          </ccl:constraint>
-          <ccl:constraint id="con:4.2.1:002" type="METRIC">
-            <ccl:measure name="rtt_latency_p95">
-              <ccl:unit>ms</ccl:unit>
-              <ccl:aggregation>P95</ccl:aggregation>
-            </ccl:measure>
-            <ccl:threshold>
-              <ccl:operator>LTE</ccl:operator>
-              <ccl:value>200</ccl:value>
-              <ccl:unit>ms</ccl:unit>
-              <ccl:window>PT24H</ccl:window>
-              <ccl:min-samples>100</ccl:min-samples>
-            </ccl:threshold>
-            <ccl:validation-condition type="DETERMINISTIC">
-              <ccl:predicate>measure(rtt_latency_p95) &lt;= threshold(200, ms)</ccl:predicate>
-            </ccl:validation-condition>
-          </ccl:constraint>
-        </ccl:objective>
-      </ccl:intent>
-    </ccl:clause>
-  </ccl:regulation>
-</ccl:document>"""
 
 
 async def main():
@@ -175,7 +63,15 @@ async def main():
     print()
 
     # Setup infrastructure
-    llm = DemoLLMProvider()
+    from infrastructure.llm_provider import get_llm_provider
+    from infrastructure.slm_service import SLMService
+
+    llm = get_llm_provider()
+    vector_store = ChromaVectorStore()
+    
+    # Initialize the Centralized SLM Service
+    slm_service = SLMService(llm_provider=llm, vector_store=vector_store)
+
     probe_registry = ProbeRegistry()
     probe_registry.register("LOG_SCAN", LogScanProbe)
     dispatcher = ProbeDispatcher(probe_registry)
@@ -183,11 +79,13 @@ async def main():
 
     # Build pipeline
     pipeline = CompliancePipeline(
-        intent_agent=IntentAgent(llm),
-        ccl_agent=CCLGeneratorAgent(llm),
+        intent_agent=IntentAgent(slm_service=slm_service),
+        ccl_agent=CCLGeneratorAgent(slm_service=slm_service),
+        mind_mapper_agent=MindMapperAgent(slm_service=slm_service),
+        skill_generator_agent=SkillGeneratorAgent(slm_service=slm_service),
         probe_agent=ProbeAgent(dispatcher),
-        xai_agent=XAIAnalyzerAgent(),
-        doc_agent=DocumentBuilderAgent(),
+        xai_agent=XAIAnalyzerAgent(slm_service=slm_service),
+        doc_agent=DocumentBuilderAgent(slm_service=slm_service),
         validation_engine=validation_engine,
     )
 
@@ -276,7 +174,7 @@ async def main():
         if ae.completed_at and ae.started_at:
             ms = (ae.completed_at - ae.started_at).total_seconds() * 1000
             duration = f" ({ms:.0f}ms)"
-        print(f"    ✓ {ae.agent_name}: {ae.status.value}{duration}")
+        print(f"    * {ae.agent_name}: {ae.status.value}{duration}")
     print()
 
     # Trace summary

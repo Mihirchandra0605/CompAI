@@ -6,6 +6,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import Depends
+from datetime import timedelta
+from .auth import create_access_token
 
 from .config import settings
 
@@ -16,6 +20,8 @@ async def lifespan(app: FastAPI):
     # Startup
     from observability.logger import setup_logging
     setup_logging(log_level=settings.log_level, json_output=not settings.debug)
+    from .db import init_db
+    await init_db()
     yield
     # Shutdown
 
@@ -41,6 +47,16 @@ def create_app() -> FastAPI:
     # Register routes
     from .api.v1 import router as v1_router
     app.include_router(v1_router, prefix=settings.api_prefix)
+
+    @app.post("/token")
+    async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+        # Dummy authentication logic for prototype
+        if form_data.username == "admin" and form_data.password == "admin":
+            access_token = create_access_token(
+                data={"sub": form_data.username}, expires_delta=timedelta(minutes=30)
+            )
+            return {"access_token": access_token, "token_type": "bearer"}
+        return {"error": "Invalid credentials"}
 
     @app.get("/health")
     async def health():
