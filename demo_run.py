@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Add project root to path
@@ -41,6 +42,7 @@ from probes.executors.log_scan import LogScanProbe
 from probes.registry import ProbeRegistry
 from probes.validation.engine import ValidationEngine
 from infrastructure.vector_store import ChromaVectorStore
+from events.bus import AsyncEventBus
 
 
 # Paths
@@ -77,6 +79,31 @@ async def main():
     dispatcher = ProbeDispatcher(probe_registry)
     validation_engine = ValidationEngine()
 
+    # Setup event bus to capture pipeline execution logs
+    event_bus = AsyncEventBus()
+    pipeline_logs = []
+
+    async def _capture_event(event):
+        label_map = {
+            "pipeline.started":                    "Pipeline initialised — starting compliance validation.",
+            "compliance.intents.extracted":        f"Intent Extraction complete — {event.payload.get('intent_count', '?')} obligations identified.",
+            "compliance.ccl.generated":            f"CCL Generator complete — {event.payload.get('clauses', '?')} clauses, {event.payload.get('constraints', '?')} constraints.",
+            "compliance.probes.completed":         f"Probe Agent complete — {event.payload.get('total_evidence', '?')} evidence records collected.",
+            "compliance.validation.completed":     f"Validation Engine complete — {event.payload.get('results_count', '?')} rules evaluated.",
+            "compliance.verdict.determined":       f"XAI Analyzer complete — Verdict: {str(event.payload.get('verdict', '?')).upper()} ({event.payload.get('confidence', 0)*100:.0f}% confidence).",
+            "pipeline.completed":                  "Pipeline completed successfully.",
+            "pipeline.failed":                     f"Pipeline FAILED — {event.payload.get('error', 'Unknown error')}.",
+        }
+        pipeline_logs.append({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "event": event.event_type,
+            "message": label_map.get(event.event_type, f"[{event.event_type}] {event.payload}"),
+        })
+
+    event_bus.subscribe("pipeline.*", _capture_event)
+    event_bus.subscribe("compliance.*", _capture_event)
+    await event_bus.start()
+
     # Build pipeline
     pipeline = CompliancePipeline(
         intent_agent=IntentAgent(slm_service=slm_service),
@@ -87,6 +114,7 @@ async def main():
         xai_agent=XAIAnalyzerAgent(slm_service=slm_service),
         doc_agent=DocumentBuilderAgent(slm_service=slm_service),
         validation_engine=validation_engine,
+        event_bus=event_bus,
     )
 
     # Define probes (normally derived from CCL by SkillGenerator)
@@ -207,6 +235,69 @@ async def main():
         print("=" * 70)
         print()
         print(result.state.report)
+
+    # Stop event bus
+    await event_bus.stop()
+
+    # ── Save all results to backend_new/pipeline_output.json ──────────────
+    xai = result.state.xai_analysis or {}
+    stages_info = []
+    for ae in result.execution_context.agent_executions:
+        duration_ms = 0
+        if ae.completed_at and ae.started_at:
+            duration_ms = int((ae.completed_at - ae.started_at).total_seconds() * 1000)
+        desc_map = {
+            "intent_agent":      "Extracted regulatory clauses and compliance obligations.",
+            "ccl_generator":     "Generated Compliance Cognitive Language (CCL) XML schema.",
+            "mind_mapper":       "Constructed semantic knowledge graph from CCL.",
+            "skill_generator":   "Derived executable probe definitions from CCL.",
+            "probe_agent":       "Executed data scanners and collected telemetry evidence.",
+            "validation_engine": "Performed deterministic NumPy validation on evidence.",
+            "xai_analyzer":      "Aggregated verdicts and generated explainable reasoning.",
+            "document_builder":  "Compiled final markdown compliance audit report.",
+        }
+        stages_info.append({
+            "name": ae.agent_name,
+            "status": ae.status.value,
+            "duration_ms": duration_ms,
+            "description": desc_map.get(ae.agent_name, ae.agent_name),
+        })
+
+    validation_results = []
+    for vr in (result.state.validation_results or []):
+        validation_results.append({
+            "constraint_id":  vr.get("constraint_id", ""),
+            "condition_id":   vr.get("condition_id", ""),
+            "operator":       vr.get("operator", ""),
+            "threshold":      vr.get("threshold_value"),
+            "measured":       vr.get("measured_value"),
+            "verdict":        vr.get("verdict", ""),
+            "sample_count":   vr.get("sample_count", 0),
+            "confidence":     vr.get("confidence", 0),
+            "reasoning":      vr.get("reasoning", ""),
+        })
+
+    output = {
+        "run_id":                   result.state.run_id,
+        "regulation_id":            result.state.regulation_id,
+        "verdict":                  result.state.verdict.value,
+        "confidence":               result.state.confidence,
+        "partial_compliance_score": xai.get("partial_compliance_score"),
+        "reasoning_chain":          xai.get("reasoning_chain", []),
+        "recommendations":          xai.get("recommendations", []),
+        "report":                   result.state.report,
+        "ccl_xml":                  result.state.ccl_document or "",
+        "stages":                   stages_info,
+        "validation_results":       validation_results,
+        "logs":                     pipeline_logs,
+        "generated_at":             datetime.now(timezone.utc).isoformat(),
+    }
+
+    output_path = Path(__file__).parent / "backend_new" / "pipeline_output.json"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(output, indent=2, default=str))
+    print()
+    print(f"[✓] Pipeline output saved → {output_path}")
 
     return result
 

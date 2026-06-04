@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #0a0a0f;
+    color: #e8e8f0;
+    font-family: 'DM Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .upload-zone {
+    @apply relative border border-dashed border-muted rounded-lg p-5 transition-all duration-200 cursor-pointer;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .upload-zone:hover {
+    @apply border-accent;
+    background: rgba(0, 229, 255, 0.04);
+    box-shadow: 0 0 0 1px rgba(0,229,255,0.1) inset;
+  }
+
+  .upload-zone.has-file {
+    @apply border-accent;
+    background: rgba(0, 229, 255, 0.05);
+  }
+
+  .tag-pill {
+    @apply font-mono text-xs px-2 py-0.5 rounded bg-faint text-accent border border-muted;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #11111a; }
+::-webkit-scrollbar-thumb { background: #1e1e2e; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2e2e4e; }
+
+/* Scanline overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(0,229,255,0.2);
+  border-top-color: #00e5ff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* Fade in animation */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up {
+  animation: fadeUp 0.4s ease forwards;
+}
+
+/* Pulse glow on accent */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 10px rgba(0,229,255,0.2); }
+  50%       { box-shadow: 0 0 24px rgba(0,229,255,0.45); }
+}
+.pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}

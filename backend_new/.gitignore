@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+uploads/
+pipeline_output.json
+.env
+*.egg-info/
+dist/
+build/
