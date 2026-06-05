@@ -38,3 +38,12 @@ async def test_slm_service_augments_prompt_with_rag_context():
     assert "RAG Context Provided" in llm.last_prompt
     assert "trai-qos.txt" in llm.last_prompt
     assert "Extract compliance intent." in llm.last_prompt
+
+
+def test_extract_json_payload_from_markdown_fence():
+    from infrastructure.llm_provider import _extract_json_payload
+
+    content = '```json\n{"intents": [{"intent_id": "int:1", "clause_reference": "sec", "description": "desc"}]}\n```'
+    extracted = _extract_json_payload(content)
+
+    assert extracted == '{"intents": [{"intent_id": "int:1", "clause_reference": "sec", "description": "desc"}]}'

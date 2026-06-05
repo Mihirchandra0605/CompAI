@@ -13,6 +13,53 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 
 
+def _extract_json_payload(content: str) -> str | None:
+    """Extract the first JSON object or array from model output."""
+    content = content.strip()
+
+    if content.startswith("```"):
+        # Remove markdown fences if present
+        lines = content.splitlines()
+        if len(lines) >= 3 and lines[-1].strip().startswith("```"):
+            content = "\n".join(lines[1:-1]).strip()
+
+    # Remove any leading text before actual JSON
+    first_json_start = min(
+        [idx for idx in (content.find('{'), content.find('[')) if idx != -1] or [len(content)]
+    )
+    content = content[first_json_start:]
+
+    if not content or content[0] not in '{[':
+        return None
+
+    opening = content[0]
+    closing = '}' if opening == '{' else ']'
+    depth = 0
+    in_string = False
+    escaped = False
+
+    for idx, ch in enumerate(content):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == '\\':
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+        elif ch == opening:
+            depth += 1
+        elif ch == closing:
+            depth -= 1
+            if depth == 0:
+                return content[: idx + 1].strip()
+
+    return None
+
+
 class LLMResponse(BaseModel):
     """Standardized LLM response."""
 
@@ -177,17 +224,16 @@ class OpenAILLMProvider(AbstractLLMProvider):
         try:
             return json.loads(resp.content)
         except json.JSONDecodeError:
-            # Fallback for models that wrap JSON in markdown blocks
             content = resp.content.strip()
-            if content.startswith("```json"):
-                content = content[7:-3]
-            elif content.startswith("```"):
-                content = content[3:-3]
-            try:
-                return json.loads(content.strip())
-            except Exception as e:
-                logger.error(f"Failed to parse structured output: {e}\nContent: {resp.content}")
-                return {}
+            payload = _extract_json_payload(content)
+            if payload:
+                try:
+                    return json.loads(payload)
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse extracted JSON payload: {e}\nPayload: {payload}")
+
+            logger.error(f"Failed to parse structured output; raw content:\n{resp.content}")
+            return {}
 
 
 def get_llm_provider() -> AbstractLLMProvider:

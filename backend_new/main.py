@@ -85,9 +85,10 @@ async def upload(
 ):
     """
     1. Validate at least one file is present.
-    2. Save all files to uploads/<session_id>/ (for reference).
-    3. Run demo_run.py as a subprocess.
-    4. Return the pipeline results to the frontend.
+    2. Clean up ALL previous uploads so old files never bleed into new runs.
+    3. Save all files to uploads/<session_id>/ (for reference).
+    4. Run demo_run.py with the actual uploaded file paths.
+    5. Return the pipeline results to the frontend.
     """
 
     # ── 1. Validate ──────────────────────────────────────────────────────
@@ -104,7 +105,12 @@ async def upload(
             detail="Please select at least one file before uploading.",
         )
 
-    # ── 2. Save files ────────────────────────────────────────────────────
+    # ── 2. Clean up previous uploads ─────────────────────────────────────
+    if UPLOAD_DIR.exists():
+        shutil.rmtree(UPLOAD_DIR)
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+    # ── 3. Save files ────────────────────────────────────────────────────
     session_id  = str(uuid.uuid4())
     session_dir = UPLOAD_DIR / session_id
 
@@ -131,17 +137,41 @@ async def upload(
         if f.filename and save_file(f, session_dir / "security"):
             files_saved["security"] += 1
 
-    # ── 3. Run demo_run.py ───────────────────────────────────────────────
-    # Run demo pipeline using default fixtures (ignore uploaded files)
+    # ── 4. Resolve uploaded file paths for demo_main ─────────────────────
+    regulation_path = None
+    latency_logs_path = None
+
+    # Find the uploaded regulation file (.txt)
+    reg_dir = session_dir / "regulation"
+    if reg_dir.exists():
+        txt_files = list(reg_dir.glob("*.txt"))
+        if txt_files:
+            regulation_path = txt_files[0]
+
+    # Find the uploaded log file (.csv, .log, .txt, .json)
+    logs_dir = session_dir / "logs"
+    if logs_dir.exists():
+        for ext in ["*.csv", "*.log", "*.txt", "*.json"]:
+            found = list(logs_dir.glob(ext))
+            if found:
+                latency_logs_path = found[0]
+                break
+
+    # Build kwargs — only pass what was uploaded, demo_main has defaults
+    kwargs = {}
+    if regulation_path:
+        kwargs["regulation_path"] = regulation_path
+    if latency_logs_path:
+        kwargs["latency_logs_path"] = latency_logs_path
+
+    # ── 5. Run demo pipeline ─────────────────────────────────────────────
     try:
-        pipeline_result = await demo_main()
-    except RuntimeError as e:
+        pipeline_result = await demo_main(**kwargs)
+    except Exception as e:
+        logger.exception("Pipeline execution failed")
         raise HTTPException(status_code=500, detail=str(e))
 
-    # ── 4. Return results ────────────────────────────────────────────────
-    # Return a single dictionary that contains the session metadata and all
-    # fields produced by demo_main (including recommendations, reasoning_chain,
-    # report, success, etc.).
+    # ── 6. Return results ────────────────────────────────────────────────
     return {
         "session_id": session_id,
         "files_saved": files_saved,

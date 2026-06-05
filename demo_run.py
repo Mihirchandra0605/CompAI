@@ -280,6 +280,53 @@ async def main(regulation_path: Path = DEFAULT_REGULATION_FILE, latency_logs_pat
             "reasoning":      vr.get("reasoning", ""),
         })
 
+    # Build per-agent output snapshots for frontend transparency
+    agent_outputs = {
+        "intent_agent": {
+            "label": "Intent Extraction",
+            "description": "Extracts regulatory obligations, measurable criteria, and compliance intents from the raw regulation text.",
+            "data": result.state.intents or [],
+        },
+        "ccl_generator": {
+            "label": "CCL Generator",
+            "description": "Transforms extracted intents into a structured Compliance Cognitive Language (CCL) XML schema.",
+            "data": result.state.ccl_document or "",
+        },
+        "mind_mapper": {
+            "label": "Mind Mapper",
+            "description": "Builds a semantic knowledge graph from the CCL document to map relationships between clauses, constraints, and evidence requirements.",
+            "data": result.state.compliance_graph or {},
+        },
+        "skill_generator": {
+            "label": "Skill Generator",
+            "description": "Derives executable probe definitions and validation conditions from the CCL schema.",
+            "data": {
+                "probe_definitions": result.state.probe_definitions or [],
+                "validation_conditions": result.state.validation_conditions or [],
+            },
+        },
+        "probe_agent": {
+            "label": "Probe Agent",
+            "description": "Executes data scanners (log scans, config checks) against uploaded telemetry files and collects evidence records.",
+            "data": result.state.evidence_collection or [],
+        },
+        "validation_engine": {
+            "label": "Validation Engine",
+            "description": "Performs deterministic numeric validation — compares measured evidence values against regulatory thresholds.",
+            "data": result.state.validation_results or [],
+        },
+        "xai_analyzer": {
+            "label": "XAI Analyzer",
+            "description": "Aggregates all validation verdicts, computes confidence scores, and generates explainable reasoning chains and recommendations.",
+            "data": result.state.xai_analysis or {},
+        },
+        "document_builder": {
+            "label": "Document Builder",
+            "description": "Compiles the final human-readable compliance audit report in Markdown format.",
+            "data": result.state.report or "",
+        },
+    }
+
     output = {
         "run_id":                   result.state.run_id,
         "regulation_id":            result.state.regulation_id,
@@ -292,6 +339,7 @@ async def main(regulation_path: Path = DEFAULT_REGULATION_FILE, latency_logs_pat
         "ccl_xml":                  result.state.ccl_document or "",
         "stages":                   stages_info,
         "validation_results":       validation_results,
+        "agent_outputs":            agent_outputs,
         "logs":                     pipeline_logs,
         "generated_at":             datetime.now(timezone.utc).isoformat(),
         "success":                  result.success,

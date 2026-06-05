@@ -43,6 +43,28 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = [
+    "agents",
+    "backend",
+    "backend_new",
+    "ccl",
+    "contracts",
+    "domain",
+    "events",
+    "explainability",
+    "graph",
+    "hitl",
+    "infrastructure",
+    "observability",
+    "orchestration",
+    "persistence",
+    "probes",
+    "reports",
+    "schemas",
+    "tools",
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

@@ -151,7 +151,7 @@ export default function App() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          <UploadCard sectionKey="regulation" title="Regulation Input"    description="Telecom regulation documents"     icon="📋" accept=".pdf,.docx,.txt"                      multiple={false} files={regulationFile} onChange={setRegulationFile} />
+          <UploadCard sectionKey="regulation" title="Regulation Input"    description="Plain-text regulation document"    icon="📋" accept=".txt"                                  multiple={false} files={regulationFile} onChange={setRegulationFile} />
           <UploadCard sectionKey="repository" title="Repository Input"    description="Source code repository archive"   icon="🗄️" accept=".zip"                                 multiple={false} files={repositoryFile} onChange={setRepositoryFile} />
           <UploadCard sectionKey="configs"    title="Configuration Files" description="Telecom configuration files"      icon="⚙️" accept=".yaml,.yml,.json"                     multiple={true}  files={configFiles}    onChange={setConfigFiles} />
           <UploadCard sectionKey="logs"       title="Logs"                description="Telemetry and latency logs"       icon="📊" accept=".log,.txt,.csv,.json"                 multiple={true}  files={logFiles}       onChange={setLogFiles} />
@@ -269,6 +269,7 @@ export default function App() {
             <div className="border-b border-border flex items-center gap-1">
               {[
                 { id: 'pipeline',   label: 'Pipeline Agents' },
+                { id: 'agents',     label: 'Agent Outputs' },
                 { id: 'validation', label: 'Validation Checks' },
                 { id: 'report',     label: 'Audit Report' },
                 { id: 'logs',       label: 'Execution Logs' },
@@ -334,6 +335,45 @@ export default function App() {
               </div>
             )}
 
+            {/* ── Tab: Agent Outputs ── */}
+            {activeTab === 'agents' && (
+              <div className="space-y-4 fade-up">
+                {pipelineResult.agent_outputs ? (
+                  Object.entries(pipelineResult.agent_outputs).map(([key, agent], idx) => (
+                    <details
+                      key={key}
+                      className="bg-panel border border-border rounded-xl overflow-hidden group"
+                      style={{ animationDelay: `${idx * 0.04}s` }}
+                    >
+                      <summary className="flex items-center justify-between px-5 py-4 cursor-pointer select-none hover:bg-faint transition-all">
+                        <div className="flex items-center gap-3">
+                          <span className="w-8 h-8 rounded-full border border-accent/30 bg-accent/10 text-accent flex items-center justify-center text-xs font-mono font-bold">
+                            {idx + 1}
+                          </span>
+                          <div>
+                            <span className="font-display font-bold text-sm text-white">{agent.label}</span>
+                            <p className="text-xs text-gray-500 font-body mt-0.5">{agent.description}</p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-mono text-gray-600 group-open:text-accent transition-colors">▼</span>
+                      </summary>
+                      <div className="border-t border-border px-5 py-4">
+                        <pre className="bg-card border border-border rounded-lg p-4 font-mono text-xs text-gray-400 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-[400px] overflow-y-auto">
+                          {typeof agent.data === 'string'
+                            ? agent.data || '(empty)'
+                            : JSON.stringify(agent.data, null, 2) || '(empty)'}
+                        </pre>
+                      </div>
+                    </details>
+                  ))
+                ) : (
+                  <div className="bg-panel border border-border rounded-xl p-6 text-center text-gray-500 text-sm">
+                    Agent output data is not available for this run.
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ── Tab: Validation Checks ── */}
             {activeTab === 'validation' && (
               <div className="bg-panel border border-border rounded-xl p-6 fade-up">
@@ -380,7 +420,25 @@ export default function App() {
               <div className="bg-panel border border-border rounded-xl p-6 space-y-6 fade-up">
                 <div className="flex justify-between items-center border-b border-border pb-4">
                   <h3 className="font-display font-bold text-lg text-white">Compliance Audit Report</h3>
-                  <span className="text-xs font-mono text-gray-600 bg-faint border border-border px-2.5 py-1 rounded">MARKDOWN</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-gray-600 bg-faint border border-border px-2.5 py-1 rounded">MARKDOWN</span>
+                    {pipelineResult.report && (
+                      <button
+                        onClick={() => {
+                          const blob = new Blob([pipelineResult.report], { type: 'text/markdown' })
+                          const url = URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = `compliance_report_${pipelineResult.run_id?.slice(0, 8) || 'report'}.md`
+                          a.click()
+                          URL.revokeObjectURL(url)
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-display font-semibold bg-accent text-ink hover:bg-accent-dim transition-all shadow-glow hover:shadow-none cursor-pointer"
+                      >
+                        <span>↓</span> Download Report
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {/* Parsed constraint table */}
                 {constraintTable && (

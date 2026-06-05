@@ -83,9 +83,22 @@ class IntentAgent(BaseComplianceAgent[IntentInput, IntentOutput]):
             "parse_intent_response", TraceNodeType.INFERENCE, agent_name=self.name
         ) as span:
             intents_raw = parsed.get("intents", [])
+            if isinstance(intents_raw, str):
+                try:
+                    intents_raw = json.loads(intents_raw)
+                except json.JSONDecodeError:
+                    intents_raw = []
+
+            if isinstance(intents_raw, dict):
+                intents_raw = [intents_raw]
+
+            if not isinstance(intents_raw, list):
+                intents_raw = []
+
             if not intents_raw:
+                logger.warning("Intent extraction returned no structured intents; using fallback extraction.")
                 intents_raw = self._extract_intents_fallback(input.regulation_text)
-                
+
             regulation_summary = parsed.get("regulation_summary")
 
             intents = []
