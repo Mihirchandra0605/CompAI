@@ -6,16 +6,21 @@ stores them, triggers demo_run.py as a subprocess,
 and returns the full pipeline results to the frontend.
 """
 
-import os
+import sys
+import httpx
 import uuid
 import shutil
-import logging
-import asyncio
 import json
+import logging
+from pathlib import Path
+# Add project root to Python path so demo_run can be imported
+sys.path.append(str(Path(__file__).parent.parent))
+import os
+os.environ.setdefault('LLM_MODEL', 'llama3:latest')
+from demo_run import main as demo_main
 from typing import List, Optional
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pathlib import Path
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
@@ -60,40 +65,13 @@ def save_file(file: UploadFile, target_dir: Path) -> bool:
         return False
 
 
-async def run_demo_pipeline() -> dict:
-    """
-    Spawn demo_run.py as an asyncio subprocess from the project root.
-    Wait for it to finish, then read and return pipeline_output.json.
-    """
-    logger.info("Spawning demo_run.py …")
-
-    proc = await asyncio.create_subprocess_exec(
-        "python", "demo_run.py",
-        cwd=str(PROJECT_DIR),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.STDOUT,
-    )
-
-    stdout, _ = await proc.communicate()
-    terminal_output = stdout.decode(errors="replace") if stdout else ""
-
-    if proc.returncode != 0:
-        logger.error(f"demo_run.py exited with code {proc.returncode}")
-        logger.error(terminal_output)
-        raise RuntimeError(
-            f"Pipeline script failed (exit {proc.returncode}).\n{terminal_output[-1000:]}"
-        )
-
-    logger.info("demo_run.py finished successfully.")
-
-    # Read the output JSON written by demo_run.py
-    if not OUTPUT_FILE.exists():
-        raise RuntimeError(
-            "Pipeline ran but pipeline_output.json was not created. "
-            "Check demo_run.py for errors."
-        )
-
-    return json.loads(OUTPUT_FILE.read_text(encoding="utf-8"))
+async def run_demo_pipeline(regulation_path: Path, latency_logs_path: Path) -> dict:
+    """Execute the demo pipeline by calling demo_run's main function with provided file paths."""
+    logger.info("Running demo pipeline via demo_main() …")
+    result = await demo_main(regulation_path=regulation_path, latency_logs_path=latency_logs_path)
+    if not isinstance(result, dict):
+        raise RuntimeError("demo_main did not return a dictionary of results.")
+    return result
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -154,16 +132,20 @@ async def upload(
             files_saved["security"] += 1
 
     # ── 3. Run demo_run.py ───────────────────────────────────────────────
+    # Run demo pipeline using default fixtures (ignore uploaded files)
     try:
-        pipeline_result = await run_demo_pipeline()
+        pipeline_result = await demo_main()
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     # ── 4. Return results ────────────────────────────────────────────────
+    # Return a single dictionary that contains the session metadata and all
+    # fields produced by demo_main (including recommendations, reasoning_chain,
+    # report, success, etc.).
     return {
-        "session_id":      session_id,
-        "files_saved":     files_saved,
-        "pipeline_result": pipeline_result,
+        "session_id": session_id,
+        "files_saved": files_saved,
+        **pipeline_result,
     }
 
 
@@ -181,3 +163,18 @@ async def get_results():
 @app.get("/health")
 async def health():
     return {"status": "healthy", "service": "backend_new"}
+
+
+@app.get("/ollama/status")
+async def ollama_status():
+    """Check if the local Ollama server is reachable."""
+    try:
+        async with httpx.AsyncClient() as client:
+            # Ollama provides a simple version endpoint
+            resp = await client.get("http://localhost:11434/api/version")
+            if resp.status_code == 200:
+                return {"ollama": "online", "details": resp.json()}
+            else:
+                raise HTTPException(status_code=502, detail="Ollama responded with error status")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))

@@ -1,0 +1,4 @@
+2026-06-05 05:00:00,001 INFO Application started
+2026-06-05 05:00:01,123 INFO Loading pipeline_output.json
+2026-06-05 05:00:02,456 WARNING Missing optional field 'recommendations'
+2026-06-05 05:00:03,789 ERROR Failed to parse JSON: Expecting value: line 1 column 1 (char 0)

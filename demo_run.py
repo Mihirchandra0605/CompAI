@@ -47,21 +47,24 @@ from events.bus import AsyncEventBus
 
 # Paths
 FIXTURES_DIR = Path(__file__).parent / "tests" / "fixtures"
-REGULATION_FILE = FIXTURES_DIR / "trai_qos_2024_full.txt"
-LATENCY_LOGS_FILE = FIXTURES_DIR / "sample_latency_logs.csv"
+DEFAULT_REGULATION_FILE = FIXTURES_DIR / "trai_qos_2024_full.txt"
+DEFAULT_LATENCY_LOGS_FILE = FIXTURES_DIR / "sample_latency_logs.csv"
 
 
 
-async def main():
-    """Run the end-to-end compliance demo."""
+async def main(regulation_path: Path = DEFAULT_REGULATION_FILE, latency_logs_path: Path = DEFAULT_LATENCY_LOGS_FILE):
+    """Run the end-to-end compliance demo.
+    Parameters can be overridden to use uploaded files.
+    """
     print("=" * 70)
     print("  CompliAI — TRAI QoS Latency Compliance Demo")
     print("=" * 70)
-    print()
-
-    # Load regulation
-    regulation_text = REGULATION_FILE.read_text()
+    # Load regulation text (simple read)
+    regulation_text = regulation_path.read_text()
     print(f"[1/6] Loaded regulation: {regulation_text.strip()[:80]}...")
+    # Fallback for latency logs – use default if none provided
+    if not latency_logs_path or not latency_logs_path.exists():
+        latency_logs_path = DEFAULT_LATENCY_LOGS_FILE
     print()
 
     # Setup infrastructure
@@ -124,7 +127,7 @@ async def main():
             "derived_from": "ps:4.2.1:001",
             "probe_type": "LOG_SCAN",
             "config": {
-                "file_path": str(LATENCY_LOGS_FILE),
+                "file_path": str(latency_logs_path),
                 "columns": ["timestamp", "call_id", "call_type", "rtt_ms"],
                 "filter": {"call_type": "volte"},
                 "aggregation": {"method": "mean", "column": "rtt_ms"},
@@ -136,7 +139,7 @@ async def main():
             "derived_from": "ps:4.2.1:002",
             "probe_type": "LOG_SCAN",
             "config": {
-                "file_path": str(LATENCY_LOGS_FILE),
+                "file_path": str(latency_logs_path),
                 "columns": ["timestamp", "call_id", "call_type", "rtt_ms"],
                 "filter": {"call_type": "volte"},
                 "aggregation": {"method": "p95", "column": "rtt_ms"},
@@ -291,15 +294,17 @@ async def main():
         "validation_results":       validation_results,
         "logs":                     pipeline_logs,
         "generated_at":             datetime.now(timezone.utc).isoformat(),
+        "success":                  result.success,
+        "reasoning_trace_node_count": len(trace.nodes),
     }
 
     output_path = Path(__file__).parent / "backend_new" / "pipeline_output.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(output, indent=2, default=str))
     print()
-    print(f"[✓] Pipeline output saved → {output_path}")
+    print(f"[OK] Pipeline output saved -> {output_path}")
 
-    return result
+    return output
 
 
 if __name__ == "__main__":

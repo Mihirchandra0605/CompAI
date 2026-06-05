@@ -1,0 +1,44 @@
+html,
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1e1e2f, #2b2b3b);
+    color: #e0e0e0;
+}
+header {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1.5rem;
+    text-align: center;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+header h1 {
+    margin: 0;
+    font-size: 2rem;
+    color: #f0f0ff;
+}
+main {
+    padding: 2rem;
+    max-width: 960px;
+    margin: auto;
+}
+section.json-view pre {
+    background: rgba(0,0,0,0.6);
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+section.error pre {
+    background: rgba(255, 0, 0, 0.2);
+    color: #ffdddd;
+    padding: 1rem;
+    border-radius: 8px;
+}
+footer {
+    text-align: center;
+    margin-top: 2rem;
+    font-size: 0.85rem;
+    color: #aaa;
+}

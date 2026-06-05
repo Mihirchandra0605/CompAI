@@ -1,0 +1,288 @@
+======================================================================
+  CompliAI — TRAI QoS Latency Compliance Demo
+======================================================================
+[1/6] Loaded regulation: Title: Standards of Quality of Service of Access (Wireline and Wireless) and Bro...
+
+INFO:probes.registry:Registered probe: LOG_SCAN -> LogScanProbe
+[2/6] Starting compliance pipeline...
+
+INFO:orchestration.pipeline:Stage 1: Intent Extraction
+INFO:httpx:HTTP Request: POST http://localhost:11434/v1/chat/completions "HTTP/1.1 200 OK"
+ERROR:infrastructure.llm_provider:Failed to parse structured output: Expecting value: line 1 column 1 (char 0)
+Content: Here is the extracted compliance intents in JSON format:
+
+```
+{
+  "intents": [
+    {
+      "intent_id": "int:4.2.1:1",
+      "clause_reference": "Section 4.2.1 â€” VoLTE Latency Requirements",
+      "description": "Ensure average round-trip latency for voice over LTE calls does not exceed 150 milliseconds.",
+      "severity": "critical",
+      "category": "quality_of_service",
+      "measurable_criteria": ["average round-trip latency", "95th percentile latency"],
+      "target_systems": ["core network boundary"],
+      "evidence_requirements": ["measurement data over any rolling 24-hour window"],
+      "confidence": 1.0
+    },
+    {
+      "intent_id": "int:4.2.2:1",
+      "clause_reference": "Section 4.2.2 â€” 5G Wireless Broadband Latency",
+      "description": "Maintain wireless broadband latency below 75 milliseconds for 5G services.",
+      "severity": "critical",
+      "category": "quality_of_service",
+      "measurable_criteria": ["wireless broadband latency"],
+      "target_systems": ["5G services"],
+      "evidence_requirements": ["measurement data"],
+      "confidence": 1.0
+    },
+    {
+      "intent_id": "int:4.2.2:2",
+      "clause_reference": "Section 4.2.2 â€” 5G Wireless Broadband Latency",
+      "description": "Reduce wireless broadband latency to below 50 milliseconds by the year 2026.",
+      "severity": "major",
+      "category": "quality_of_service",
+      "measurable_criteria": ["wireless broadband latency"],
+      "target_systems": ["5G services"],
+      "evidence_requirements": ["measurement data", "implementation plan"],
+      "confidence": 0.9
+    },
+    {
+      "intent_id": "int:4.3:1",
+      "clause_reference": "Section 4.3 â€” Coverage Maps",
+      "description": "Display technology-wise coverage maps on official websites, updated quarterly.",
+      "severity": "minor",
+      "category": "quality_of_service",
+      "measurable_criteria": ["coverage map accuracy"],
+      "target_systems": ["official websites"],
+      "evidence_requirements": ["quarterly updates", "measurement data"],
+      "confidence": 0.8
+    },
+    {
+      "intent_id": "int:5.1:1",
+      "clause_reference": "Section 5.1 â€” Penalties for Non-Compliance",
+      "description": "Implement financial disincentives for non-compliance with quality benchmarks.",
+      "severity": "critical",
+      "category": "compliance",
+      "measurable_criteria": ["penalty amounts"],
+      "target_systems": ["service providers"],
+      "evidence_requirements": ["audit data", "drive test results"],
+      "confidence": 1.0
+    },
+    {
+      "intent_id": "int:6.1:1",
+      "clause_reference": "Section 6.1 â€” Audit Data",
+      "description": "Retain logs for 180 days to allow for verification of compliance.",
+      "severity": "minor",
+      "category": "compliance",
+      "measurable_criteria": ["log retention period"],
+      "target_systems": ["service providers"],
+      "evidence_requirements": ["logs", "audit data"],
+      "confidence": 0.9
+    }
+  ],
+  "regulation_summary": "Standards of Quality of Service for Access and Broadband Services in India, effective October 1, 2024."
+}
+```
+
+Note that the `intent_id` is a unique identifier for each intent, combining the clause reference with a sequence number (if applicable). The `confidence` value represents the level of certainty or reliability associated with each intent.
+INFO:orchestration.pipeline:Stage 2: CCL Generation
+INFO:httpx:HTTP Request: POST http://localhost:11434/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:orchestration.pipeline:Stage 3: Mind Mapping
+INFO:orchestration.pipeline:Stage 4: Skill Generation
+INFO:orchestration.pipeline:Stage 3: Probe Execution
+INFO:probes.dispatcher:Probe probe:run:001 completed: 21248 samples in 1176ms
+INFO:probes.dispatcher:Probe probe:run:002 completed: 21248 samples in 1178ms
+INFO:orchestration.pipeline:Stage 4: Validation
+INFO:orchestration.pipeline:Stage 5: XAI Analysis
+INFO:httpx:HTTP Request: POST http://localhost:11434/v1/chat/completions "HTTP/1.1 200 OK"
+ERROR:infrastructure.llm_provider:Failed to parse structured output: Expecting value: line 1 column 1 (char 0)
+Content: Here is the JSON output:
+
+```
+{
+  "reasoning_chain": [
+    "The validation results indicate that condition vc:4.2.1:001 passed with a measured value of 145.6ms, which is within the threshold of 150.0ms (margin: +4.4ms). This suggests that the quality of service meets the required standards.",
+    "However, condition vc:4.2.1:002 failed with a measured value of 223.6ms, exceeding the threshold of 200.0ms (margin: -23.6ms). This indicates that the quality of service falls short of the required standards.",
+    "Given the severity level of 'major' for intent int:fallback:d855b912, any failures or missing evidence must be addressed to ensure compliance."
+  ],
+  "recommendations": [
+    "Investigate and address the root cause of the failed condition vc:4.2.1:002 to bring the measured value within the threshold.",
+    "Verify that sufficient evidence is collected to support the intent int:fallback:d855b912, as the current confidence level is low (0.3)."
+  ]
+}
+```
+
+Note that the reasoning chain provides a logical explanation of the compliance verdict, highlighting both the passing and failing conditions. The recommendations are actionable steps to address any failures or missing evidence, with a focus on improving compliance.
+INFO:orchestration.pipeline:Stage 6: Report Generation
+INFO:httpx:HTTP Request: POST http://localhost:11434/v1/chat/completions "HTTP/1.1 200 OK"
+----------------------------------------------------------------------
+  PIPELINE RESULTS
+----------------------------------------------------------------------
+
+  Run ID:     0cccd7a3-3cd8-4f2e-b351-1fe40d4233ac
+  Verdict:    non_compliant
+  Confidence: 1.00
+  Success:    True
+
+  Execution Stages:
+    * intent_agent: completed (222091ms)
+    * ccl_generator: completed (126237ms)
+    * mind_mapper: completed (45ms)
+    * skill_generator: completed (2ms)
+    * probe_agent: completed (1680ms)
+    * validation_engine: completed (1589ms)
+    * xai_analyzer: completed (134443ms)
+    * document_builder: completed (131318ms)
+
+  Reasoning Trace: 19 nodes
+
+  XAI Analysis:
+    Regulation Verdict: NON_COMPLIANT
+    Partial Score:      50%
+
+  Reasoning Chain:
+
+======================================================================
+  GENERATED COMPLIANCE REPORT
+======================================================================
+
+**Compliance Report for Regulation TRAI-QOS-2024-4.2.1**
+=====================================================
+
+**Overview**
+------------
+
+This report summarizes the compliance status of our organization with respect to regulation TRAI-QOS-2024-4.2.1, which sets standards for voice over LTE (VoLTE) latency requirements.
+
+**Constraint Results**
+-------------------
+
+| Constraint ID | Verdict | Measured Value | Threshold Value |
+| --- | --- | --- | --- |
+| con:4.2.1:001 | PASS | 145.6 ms | 150.0 ms |
+| con:4.2.1:002 | FAIL | 223.6 ms | 200.0 ms |
+
+**Evidence Summary**
+-------------------
+
+The evidence summary is based on the validation results provided below.
+
+**Reasoning**
+------------
+
+The reasoning behind the verdicts is as follows:
+
+* **con:4.2.1:001**: The measured average round-trip latency for voice over LTE calls (145.6 ms) does not exceed the threshold value of 150.0 ms, resulting in a PASS verdict.
+* **con:4.2.1:002**: The measured 95th percentile latency (223.6 ms) exceeds the threshold value of 200.0 ms, resulting in a FAIL verdict.
+
+**Recommendations**
+-------------------
+
+Based on the results, we recommend the following:
+
+* Implement measures to reduce the average round-trip latency for voice over LTE calls to meet the threshold value of 150.0 ms.
+* Investigate and address the root cause of the high 95th percentile latency (223.6 ms) to ensure compliance with the regulation.
+
+**Validation Results**
+----------------------
+
+[Insert validation results table]
+
+Note: The validation results table is not included in this report, as it is a large dataset that requires further analysis and interpretation.
+Traceback (most recent call last):
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\logging\config.py", line 541, in configure
+    formatters[name] = self.configure_formatter(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\logging\config.py", line 653, in configure_formatter
+    result = self.configure_custom(config)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\logging\config.py", line 472, in configure_custom
+    result = c(**kwargs)
+             ^^^^^^^^^^^
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\logging.py", line 42, in __init__
+    self.use_colors = sys.stdout.isatty()
+                      ^^^^^^^^^^^^^^^^^
+AttributeError: 'Tee' object has no attribute 'isatty'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\Downloads\CompAI\visualizer_server.py", line 91, in <module>
+    uvicorn.run(app, host="0.0.0.0", port=8001)
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\main.py", line 517, in run
+    config = Config(
+             ^^^^^^^
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\config.py", line 275, in __init__
+    self.configure_logging()
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\config.py", line 367, in configure_logging
+    logging.config.dictConfig(self.log_config)
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\logging\config.py", line 812, in dictConfig
+    dictConfigClass(config).configure()
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\logging\config.py", line 544, in configure
+    raise ValueError('Unable to configure '
+ValueError: Unable to configure formatter 'default'
+Traceback (most recent call last):
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\logging\config.py", line 541, in configure
+    formatters[name] = self.configure_formatter(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\logging\config.py", line 653, in configure_formatter
+    result = self.configure_custom(config)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\logging\config.py", line 472, in configure_custom
+    result = c(**kwargs)
+             ^^^^^^^^^^^
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\logging.py", line 42, in __init__
+    self.use_colors = sys.stdout.isatty()
+                      ^^^^^^^^^^^^^^^^^
+AttributeError: 'Tee' object has no attribute 'isatty'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\Downloads\CompAI\visualizer_server.py", line 91, in <module>
+    uvicorn.run(app, host="0.0.0.0", port=8001)
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\main.py", line 517, in run
+    config = Config(
+             ^^^^^^^
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\config.py", line 275, in __init__
+    self.configure_logging()
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\site-packages\uvicorn\config.py", line 367, in configure_logging
+    logging.config.dictConfig(self.log_config)
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\logging\config.py", line 812, in dictConfig
+    dictConfigClass(config).configure()
+  File "C:\Users\91913\AppData\Local\Programs\Python\Python311\Lib\logging\config.py", line 544, in configure
+    raise ValueError('Unable to configure '
+ValueError: Unable to configure formatter 'default'
+2026-06-05 05:56:10,152 INFO Started server process [19764]
+2026-06-05 05:56:10,152 INFO Waiting for application startup.
+2026-06-05 05:56:10,152 INFO Application startup complete.
+2026-06-05 05:56:10,154 INFO Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+2026-06-05 05:56:15,412 INFO 127.0.0.1:57130 - "GET / HTTP/1.1" 200
+2026-06-05 05:56:15,606 INFO 127.0.0.1:57130 - "GET /static/style.css HTTP/1.1" 200
+2026-06-05 06:00:29,643 INFO 127.0.0.1:53569 - "GET / HTTP/1.1" 200
+2026-06-05 06:00:29,679 INFO 127.0.0.1:53569 - "GET /static/style.css HTTP/1.1" 304
+2026-06-05 06:00:35,266 INFO 127.0.0.1:58655 - "GET / HTTP/1.1" 200
+2026-06-05 06:01:28,633 INFO 127.0.0.1:56717 - "GET / HTTP/1.1" 200
+2026-06-05 06:01:29,546 INFO 127.0.0.1:56717 - "GET / HTTP/1.1" 200
+2026-06-05 06:01:30,076 INFO 127.0.0.1:56717 - "GET / HTTP/1.1" 200
+2026-06-05 06:01:30,502 INFO 127.0.0.1:56717 - "GET / HTTP/1.1" 200
+2026-06-05 06:01:30,639 INFO 127.0.0.1:56717 - "GET / HTTP/1.1" 200
+2026-06-05 06:01:30,867 INFO 127.0.0.1:56717 - "GET / HTTP/1.1" 200
+2026-06-05 06:02:30,390 INFO 127.0.0.1:53991 - "GET / HTTP/1.1" 200
+2026-06-05 06:02:31,362 INFO 127.0.0.1:53991 - "GET / HTTP/1.1" 200
+2026-06-05 06:02:31,592 INFO 127.0.0.1:53991 - "GET / HTTP/1.1" 200
+2026-06-05 06:02:31,813 INFO 127.0.0.1:53991 - "GET / HTTP/1.1" 200
+2026-06-05 06:02:32,028 INFO 127.0.0.1:53991 - "GET / HTTP/1.1" 200
+2026-06-05 06:03:08,937 INFO Shutting down
+2026-06-05 06:03:09,038 INFO Waiting for application shutdown.
+2026-06-05 06:03:09,039 INFO Application shutdown complete.
+2026-06-05 06:03:09,039 INFO Finished server process [19764]
+Exception ignored in: <__main__.Tee object at 0x000001F674600F90>
+AttributeError: 'Tee' object has no attribute 'flush'
+Exception ignored in sys.unraisablehook: <built-in function unraisablehook>
+AttributeError: 'Tee' object has no attribute 'flush'
+Exception ignored in: <__main__.Tee object at 0x000001DABC7F1590>
+AttributeError: 'Tee' object has no attribute 'flush'
+Exception ignored in sys.unraisablehook: <built-in function unraisablehook>
+AttributeError: 'Tee' object has no attribute 'flush'

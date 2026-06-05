@@ -54,7 +54,7 @@ export default function App() {
     try {
       const response = await axios.post(`${API_URL}/upload`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 300_000,   // pipeline can take a while
+        timeout: 10_800_000, // pipeline can take a while (now 3 hours)
       })
       setStatus({ type: 'success', message: '', data: response.data })
       setActiveTab('pipeline')
@@ -84,7 +84,7 @@ export default function App() {
     logFiles.length +
     securityFiles.length
 
-  const pipelineResult = status.data?.pipeline_result ?? null
+  const pipelineResult = status.data ?? null
   const constraintTable = parseMarkdownTable(pipelineResult?.report)
 
   const verdictIsPass =
@@ -158,7 +158,6 @@ export default function App() {
           <UploadCard sectionKey="security"   title="Security Evidence"   description="Certificates and security artifacts" icon="🔐" accept=".pem,.crt,.txt,.json,.yaml,.yml,.zip" multiple={true}  files={securityFiles}  onChange={setSecurityFiles} />
         </div>
 
-        {/* Action bar */}
         <div className="mt-8 flex flex-col gap-4">
           <StatusMessage status={status} />
           <div className="flex flex-wrap items-center gap-3">
@@ -467,7 +466,7 @@ export default function App() {
               </div>
             )}
 
-          </div>  {/* end results dashboard */}
+          </div>
         )}
       </main>
     </div>
